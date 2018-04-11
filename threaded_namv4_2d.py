@@ -28,24 +28,22 @@ import ncepy
 plt.switch_backend('agg')
 import pdb
 import subprocess
-import weather_modules as wm
+#import weather_modules as wm
 
 ######################   USER DEFINED SETTINGS    ############################################
 try:
   exp=str(sys.argv[1])
   fhr=str(sys.argv[2]).zfill(2)
   startplot=datetime.strptime(str(sys.argv[3]),'%Y%m%d%H')   # start time
+  tmpdir=str(sys.argv[4])
 except:
-  exp='rw_c008'
-  exp='rw_019'
-  exp='rw_021'
-  exp='rw_022'
-  exp='rw_023'
-  startplot=datetime.strptime('2015103020','%Y%m%d%H')   # start time
-  fhr=10                                               # number of plots to generate plus one for the start time.
+  exp='fv3gfs_dl2rw_NODA'  ; tmpdir='stmp'
+  exp='fv3gfs_dl2rw_NATURE'; tmpdir='ptmp'
+  startplot=datetime.strptime('2018032800','%Y%m%d%H')   # start time
+  fhr=3                                              # number of plots to generate plus one for the start time.
 
-outputdir='/home/Donald.E.Lippi/plotting/python/namv4-pygraphics/figs'# output directory
-fhr=str(fhr).zfill(2)
+outputdir='/gpfs/hps3/emc/meso/save/Donald.E.Lippi/pygraphics/figs/'# output directory
+fhr=str(fhr).zfill(3)
 fhrstr=fhr
 print("exp: "+exp)
 print("fhr: "+fhr)
@@ -53,11 +51,13 @@ print("fhr: "+fhr)
                                                        # levs=['all'] will plot all levels.
 proj="lcc"                                             # map projection
 dom="SC5"                                               # domain (CONUS,NW,NWRFC,NC,NE,SC,SE,SW,MIDATL
+dom="CONUS"
+#dom="GLOBE_mercator"
                                                        # Great_Lakes,AK,NAK,SAK,SWAK,SEAK,PR,GUAM,HI,
                                                        # POWER,OK,LAKE_VICTORIA,AFRICA,MEDFORD))
 varnames=[                                             # uncomment the desired variables below
-#          'REFC',\
-          'APCP',\
+          'REFC',\
+#          'APCP',\
 #          'APCP_C',\
 #          'MSL',\
 #          'SRHL0_1km_max',\
@@ -109,18 +109,22 @@ if( exp == 'obs'):
    nesteddata=str(os.path.join(datadir,'ccpa_conus_0.125d_t'+cycstr+'z_03h'))
 else:
    datadir="/scratch4/NCEPDEV/stmp4/Donald.E.Lippi/pyplot_work_"+exp+"."+PDY
+   datadir="/gpfs/hps2/"+tmpdir+"/Donald.E.Lippi/"+exp+"/gfs."+PDY+"/00"
    if( not os.path.exists(datadir)): os.makedirs(datadir)
-   nesteddata=str(os.path.join(datadir,'namrr.t'+cycstr+'z.conusnest.hiresf'+fhrstr+'.tm00.grib2'))     # name of file
+   #nesteddata=str(os.path.join(datadir,'namrr.t'+cycstr+'z.conusnest.hiresf'+fhrstr+'.tm00.grib2'))
+   nesteddata=str(os.path.join(datadir,'gfs.t00z.pgrb2.0p25.f'+str(fhr)))     # name of file
+  
+
 
 print(nesteddata)
-exit()
 
 # Download from tape if file doesn't exist locally.
 if( not os.path.isfile(nesteddata) and exp != 'obs'):
-  HPSSDIR="/NCEPDEV/emc-meso/5year/Donald.E.Lippi/nw"+exp+"/rh"+YYYY+"/"+YYYY+MM+"/"+PDY+"/meso2_noscrub_Donald.E.Lippi_com_namrr_"+exp+"_namrr."+PDY+cycstr+".conusnest.tar" 
-  HPSSFILE="namrr.t"+cycstr+"z.conusnest.hiresf"+fhr+".tm00.grib2"
-  subprocess.call(["htar","-xvf",HPSSDIR,"./"+HPSSFILE])
-  subprocess.call(["mv",HPSSFILE,datadir])
+   exit("file DNE: "+str(nesteddata))
+#  HPSSDIR="/NCEPDEV/emc-meso/5year/Donald.E.Lippi/nw"+exp+"/rh"+YYYY+"/"+YYYY+MM+"/"+PDY+"/meso2_noscrub_Donald.E.Lippi_com_namrr_"+exp+"_namrr."+PDY+cycstr+".conusnest.tar" 
+#  HPSSFILE="namrr.t"+cycstr+"z.conusnest.hiresf"+fhr+".tm00.grib2"
+#  subprocess.call(["htar","-xvf",HPSSDIR,"./"+HPSSFILE])
+#  subprocess.call(["mv",HPSSFILE,datadir])
 
 # Create the basemap
 # create figure and axes instances
@@ -128,9 +132,12 @@ fig = plt.figure(figsize=(11,11))
 ax = fig.add_axes([0.1,0.1,0.8,0.8])
 
 # Setup map corners for plotting.  This will give us CONUS
-llcrnrlon,llcrnrlat,urcrnrlon,urcrnrlat,res=ncepy.corners_res('SC',proj=proj)
+llcrnrlon,llcrnrlat,urcrnrlon,urcrnrlat,res=ncepy.corners_res('CONUS',proj=proj)
+
+if(dom=='GLOBE_mercator'): proj,lat_ts,llcrnrlon,llcrnrlat,urcrnrlon,urcrnrlat='merc',20,-180,-80,180,80
 if(dom == 'SC4'): llcrnrlon,llcrnrlat,urcrnrlon,urcrnrlat=-104.0,28.0,-92.0,35.0
 if(dom == 'SC5'): llcrnrlon,llcrnrlat,urcrnrlon,urcrnrlat=-104.0,26.0,-92.0,33.0
+
 m = Basemap(llcrnrlon=llcrnrlon,   llcrnrlat=llcrnrlat,
                urcrnrlon=urcrnrlon,  urcrnrlat=urcrnrlat,
                projection=proj, lat_0=35.4,lon_0=-97.6,
@@ -142,11 +149,15 @@ meridians = np.arange(0.,360.,4.)
 #m.drawmapboundary(fill_color='#7777ff')
 #m.fillcontinents(color='#ddaa66', lake_color='#7777ff', zorder = 0)
 m.drawcoastlines(linewidth=1.25)
-m.drawstates(linewidth=1.25)
-m.drawcountries(linewidth=1.25)
-m.drawparallels(parallels,labels=[1,0,0,1])
-m.drawmeridians(meridians,labels=[1,0,0,1])
-m.drawcounties(linewidth=0.2, color='k')
+if(dom != 'GLOBE_mercator'):
+   m.drawstates(linewidth=1.25)
+   m.drawcountries(linewidth=1.25)
+   m.drawparallels(parallels,labels=[1,0,0,1])
+   m.drawmeridians(meridians,labels=[1,0,0,1])
+   m.drawcounties(linewidth=0.2, color='k')
+if(dom == 'GLOBE_mercator'):
+   m.drawparallels(np.arange(-90.,91.,30.))
+   m.drawmeridians(np.arange(-180.,181.,60.))
 
 def mkplot(varname):
     print("mkplot - "+str(multiprocessing.current_process()))
@@ -1116,6 +1127,9 @@ def plot_Dictionary():
 def exp_Dictionary():
     experiment_dispatcher={  
         'rw_c008':'control',
+        'fv3gfs_dl2rw_test':'test',
+        'fv3gfs_dl2rw_NODA':'NODA',
+        'fv3gfs_dl2rw_NATURE':'NATURE',
         'rw_019':'w_only',
         'rw_021':'w_so_elev5',
         'rw_022':'w_so_elev10',
